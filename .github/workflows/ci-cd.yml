@@ -1,0 +1,220 @@
+# Every push / PR: tests and infra checks.
+# Push to main: build ARM images to GHCR, then deploy to the demo server through SSM.
+#
+# Deploying is OFF until these are set (Settings > Secrets and variables > Actions >
+# Variables), and a GitHub environment named "demo" exists:
+#   DEPLOY_ENABLED       true
+#   AWS_REGION           ap-south-1
+#   AWS_DEPLOY_ROLE_ARN  from `tofu output deploy_role_arn`
+#   INSTANCE_ID          from `tofu output instance_id`
+#   RELEASE_BUCKET       from `tofu output bucket`
+#   DOMAIN               e.g. lung-demo.duckdns.org
+#   BUILD_RUNNER         optional: ubuntu-24.04-arm for native ARM builds (much faster)
+# No AWS keys are stored anywhere: the deploy job gets short-lived credentials via OIDC.
+
+name: ci-cd
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_USER: lung
+          POSTGRES_PASSWORD: lung
+          POSTGRES_DB: lung
+        ports: ["55432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U lung -d lung" --health-interval 5s --health-retries 20
+      valkey:
+        image: valkey/valkey:8-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "valkey-cli ping" --health-interval 5s --health-retries 20
+      elasticmq:
+        image: softwaremill/elasticmq-native:1.7.1
+        ports: ["9324:9324"]
+    env:
+      AWS_ACCESS_KEY_ID: local # ElasticMQ ignores credentials, boto needs some
+      AWS_SECRET_ACCESS_KEY: local
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: apps/api/uv.lock
+      - name: Install
+        run: uv --directory apps/api sync --frozen
+      - name: Lint, types, unit tests
+        run: make check
+      - name: Integration tests (PostGIS, Valkey, ElasticMQ)
+        run: make test-int
+
+  infra:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: 1.10.10
+      - name: tofu fmt
+        run: tofu fmt -check -recursive infra
+      - name: tofu validate
+        run: |
+          for d in infra/bootstrap infra/envs/demo infra/envs/scale; do
+            (cd "$d" && tofu init -backend=false -input=false >/dev/null && tofu validate)
+          done
+      - name: tofu test (security and monitoring properties, mocked AWS)
+        run: |
+          for m in network compute storage iam monitoring; do
+            (cd "infra/modules/$m" && tofu init -input=false >/dev/null && tofu test)
+          done
+      - name: shellcheck
+        run: shellcheck -x deploy/scripts/*.sh
+      - name: Caddyfile
+        run: |
+          for addr in example.duckdns.org :80; do
+            docker run --rm -e SITE_ADDRESS="$addr" -e ACME_EMAIL=ops@example.com \
+              -v "$PWD/deploy/caddy:/etc/caddy:ro" caddy:2-alpine \
+              caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+          done
+      - name: Production compose file
+        working-directory: deploy
+        run: |
+          IMAGE_REPO=x IMAGE_TAG=y SITE_ADDRESS=x ACME_EMAIL=x POSTGRES_PASSWORD=x \
+          ENV_FILE=/dev/null docker compose -f compose.prod.yml config --quiet
+
+  build:
+    needs: [test, infra]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ${{ vars.BUILD_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+      repo: ${{ steps.meta.outputs.repo }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: meta
+        name: Image names
+        run: |
+          echo "repo=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+          echo "tag=${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-qemu-action@v3 # no-op cost on a native ARM runner
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: API / worker image
+        uses: docker/build-push-action@v6
+        with:
+          context: apps/api
+          platforms: linux/arm64
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.repo }}/lung-api:${{ steps.meta.outputs.tag }}
+            ${{ steps.meta.outputs.repo }}/lung-api:main
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,scope=api,mode=max
+          provenance: false
+      - name: Postgres + PostGIS image
+        uses: docker/build-push-action@v6
+        with:
+          context: deploy/postgres
+          platforms: linux/arm64
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.repo }}/lung-postgres:${{ steps.meta.outputs.tag }}
+            ${{ steps.meta.outputs.repo }}/lung-postgres:main
+          cache-from: type=gha,scope=postgres
+          cache-to: type=gha,scope=postgres,mode=max
+          provenance: false
+
+  deploy:
+    needs: build
+    if: vars.DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: demo
+      url: https://${{ vars.DOMAIN }}
+    concurrency:
+      group: deploy-demo
+      cancel-in-progress: false # never interrupt a deploy halfway
+    permissions:
+      contents: read
+      id-token: write # OIDC -> short-lived AWS credentials
+    env:
+      TAG: ${{ needs.build.outputs.tag }}
+      REPO: ${{ needs.build.outputs.repo }}
+      AWS_REGION: ${{ vars.AWS_REGION }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - name: Upload release bundle
+        run: |
+          mkdir bundle
+          cp -r deploy/compose.prod.yml deploy/caddy deploy/scripts deploy/systemd bundle/
+          cp -r site bundle/site
+          chmod +x bundle/scripts/*.sh
+          tar czf release.tgz -C bundle .
+          aws s3 cp release.tgz "s3://${{ vars.RELEASE_BUCKET }}/releases/$TAG.tgz" --only-show-errors
+      - name: Deploy on the server (SSM Run Command)
+        run: |
+          jq -n --arg tag "$TAG" --arg repo "$REPO" '{commands: [
+            "set -euo pipefail",
+            ". /etc/lung.env",
+            "D=/opt/lung/releases/\($tag)",
+            "mkdir -p $D",
+            "aws s3 cp s3://$RELEASE_BUCKET/releases/\($tag).tgz /tmp/release.tgz --region $AWS_REGION --only-show-errors",
+            "tar xzf /tmp/release.tgz -C $D && rm -f /tmp/release.tgz",
+            "bash $D/scripts/deploy.sh \($tag) \($repo)"
+          ], executionTimeout: ["900"]}' > params.json
+          CMD=$(aws ssm send-command \
+            --instance-ids "${{ vars.INSTANCE_ID }}" \
+            --document-name AWS-RunShellScript \
+            --comment "deploy $TAG" \
+            --parameters file://params.json \
+            --query Command.CommandId --output text)
+          echo "command: $CMD"
+          for _ in $(seq 1 180); do
+            STATUS=$(aws ssm get-command-invocation --command-id "$CMD" \
+              --instance-id "${{ vars.INSTANCE_ID }}" --query Status --output text 2>/dev/null || echo Pending)
+            case "$STATUS" in Pending|InProgress|Delayed) sleep 5 ;; *) break ;; esac
+          done
+          aws ssm get-command-invocation --command-id "$CMD" --instance-id "${{ vars.INSTANCE_ID }}" \
+            --query '[StandardOutputContent, StandardErrorContent]' --output text
+          echo "status: $STATUS"
+          [ "$STATUS" = "Success" ]
+      - name: Check it's live over HTTPS
+        run: |
+          for i in $(seq 1 12); do
+            if curl -fsS "https://${{ vars.DOMAIN }}/health" | grep -q '"ok"'; then
+              echo "live: https://${{ vars.DOMAIN }}"; exit 0
+            fi
+            echo "not yet ($i)"; sleep 10
+          done
+          exit 1

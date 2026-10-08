@@ -1,0 +1,128 @@
+# Production stack on the EC2 server. Started by deploy/scripts/deploy.sh with
+#   docker compose -p lung -f compose.prod.yml --env-file /opt/lung/.env up -d
+# /opt/lung/.env is rendered from SSM (config + SecureString secrets) on every deploy.
+#
+# Memory budget for a 2 GB t4g.small (plus 2 GB swap):
+#   postgres 512M, api 2 x 320M, worker 384M, valkey 96M, caddy 96M, migrate 256M (one-shot)
+
+name: lung
+
+x-logging: &logging
+  driver: awslogs
+  options:
+    awslogs-region: ${AWS_REGION:-ap-south-1}
+    awslogs-group: ${LOG_GROUP:-/lung/demo}
+    tag: "{{.Name}}"
+
+x-app: &app
+  image: ${IMAGE_REPO:?set IMAGE_REPO}/lung-api:${IMAGE_TAG:?set IMAGE_TAG}
+  env_file:
+    - "${ENV_FILE:-/opt/lung/.env}"
+  environment: &app-env
+    DATABASE_URL: postgresql+asyncpg://lung:${POSTGRES_PASSWORD:?}@postgres:5432/lung
+    VALKEY_URL: redis://valkey:6379/0
+  restart: unless-stopped
+  logging: *logging
+  networks: [backend]
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp" # HTTP/3
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:?set by deploy.sh}
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL (put-secrets.sh)}
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./site:/srv/site:ro
+      - ${DATA_DIR:-/data}/caddy:/data # certificates survive redeploys
+    depends_on:
+      api: {condition: service_healthy}
+    mem_limit: 96m
+    logging: *logging
+    networks: [backend]
+
+  migrate:
+    <<: *app
+    command: ["alembic", "upgrade", "head"]
+    restart: "no"
+    depends_on:
+      postgres: {condition: service_healthy}
+    mem_limit: 256m
+
+  api:
+    <<: *app
+    deploy:
+      replicas: 2
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      valkey: {condition: service_healthy}
+    mem_limit: 320m
+    # Healthcheck comes from the image (GET /health).
+
+  worker:
+    <<: *app
+    command: ["python", "-m", "lung.worker"]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      valkey: {condition: service_healthy}
+    stop_grace_period: 60s # finish in-flight jobs on deploy
+    mem_limit: 384m
+    healthcheck:
+      # The worker touches this file on every poll (at least every 10 s).
+      test: ["CMD", "python", "-c", "import os,sys,time; sys.exit(time.time() - os.path.getmtime('/tmp/worker-heartbeat') > 120)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+
+  postgres:
+    image: ${IMAGE_REPO}/lung-postgres:${IMAGE_TAG}
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: lung
+      POSTGRES_DB: lung
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+    command:
+      - postgres
+      - -c
+      - shared_buffers=128MB
+      - -c
+      - effective_cache_size=384MB
+      - -c
+      - work_mem=4MB
+      - -c
+      - max_connections=60
+      - -c
+      - log_min_duration_statement=1000
+    volumes:
+      - ${DATA_DIR:-/data}/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lung -d lung"]
+      interval: 5s
+      retries: 20
+    shm_size: 128m
+    mem_limit: 512m
+    logging: *logging
+    networks: [backend]
+
+  valkey:
+    image: valkey/valkey:8-alpine
+    restart: unless-stopped
+    # A pure cache: every key has a TTL, nothing needs to survive a restart.
+    command: ["valkey-server", "--save", "", "--appendonly", "no",
+              "--maxmemory", "64mb", "--maxmemory-policy", "volatile-lru"]
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      retries: 10
+    mem_limit: 96m
+    logging: *logging
+    networks: [backend]
+
+networks:
+  backend: {}

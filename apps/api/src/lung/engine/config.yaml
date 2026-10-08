@@ -1,0 +1,181 @@
+# Every number the engine uses. Sources and reasoning: docs/engine-parameters.md
+# Changing a value here never needs a code change; the worked-example test guards the maths.
+# Defaults are tuned so a user who gives no optional details gets the design-doc numbers.
+
+who_guideline_ugm3: 15        # WHO 2021 24-hour PM2.5 guideline
+cigarette_ugm3: 22            # Berkeley Earth rule of thumb: 22 µg/m³ for 24 h ≈ 1 cigarette
+
+bands:
+  green_max: 100              # at or below the WHO guideline dose
+  amber_max: 400              # up to ~India's 24 h standard (60 µg/m³ = 4 × 15)
+
+# ---------------------------------------------------------------- breathing
+child_max_age: 11             # ages 3-11 use the child column
+inhalation_m3_per_h:          # used when weight is unknown
+  asleep: {man: 0.45, woman: 0.38, child: 0.35}
+  light:  {man: 0.80, woman: 0.70, child: 0.60}
+  walk:   {man: 1.40, woman: 1.20, child: 1.00}
+  run:    {man: 3.00, woman: 2.60, child: 2.00}
+  cycle:  {man: 2.40, woman: 2.00, child: 1.60}
+
+# Used when weight is known (US EPA Exposure Factors Handbook method):
+# rate = BMR × MET × oxygen per kcal × ventilatory equivalent
+breathing_personal:
+  oxygen_l_per_kcal: 0.209    # EPA EFH: H = 0.05 L O2 per kJ
+  ventilatory_equivalent: 27  # EPA EFH: litres of air per litre of O2
+  met: {asleep: 0.95, light: 2.0, walk: 3.5, run: 8.0, cycle: 6.8}
+  # Used only when exertion is measured (heart rate, steps) but no weight was given.
+  default_weight:
+    adult: {man: 65, woman: 55, other: 60}      # typical Indian adults, kg
+    young_max_age: 5                             # children: (age × 2) + 8 up to 5 ...
+    young_slope: 2
+    young_intercept: 8
+    older_child_max_age: 17                      # ... then (age × 3) + 7, capped at adult
+    older_slope: 3
+    older_intercept: 7
+  # BMR (kcal/day) = slope × weight_kg + intercept; WHO/FAO/UNU (1985) equations
+  bmr:
+    - {sex: man,   min_age: 3,  max_age: 9,   slope: 22.7, intercept: 495}
+    - {sex: man,   min_age: 10, max_age: 17,  slope: 17.5, intercept: 651}
+    - {sex: man,   min_age: 18, max_age: 29,  slope: 15.3, intercept: 679}
+    - {sex: man,   min_age: 30, max_age: 59,  slope: 11.6, intercept: 879}
+    - {sex: man,   min_age: 60, max_age: 120, slope: 13.5, intercept: 487}
+    - {sex: woman, min_age: 3,  max_age: 9,   slope: 22.5, intercept: 499}
+    - {sex: woman, min_age: 10, max_age: 17,  slope: 12.2, intercept: 746}
+    - {sex: woman, min_age: 18, max_age: 29,  slope: 14.7, intercept: 496}
+    - {sex: woman, min_age: 30, max_age: 59,  slope: 8.7,  intercept: 829}
+    - {sex: woman, min_age: 60, max_age: 120, slope: 10.5, intercept: 596}
+
+# ---------------------------------------------------------------- commute
+commute_activity:             # what the body is doing on each mode
+  walk: walk
+  cycle: cycle
+  bus_metro: walk             # includes walking to and from stops
+  two_wheeler: light          # seated; breathing close to resting
+  car: light
+
+commute_factor:               # share of outdoor PM2.5 reaching the person
+  walk: 1.0
+  cycle: 1.0
+  bus_metro: 1.0              # conservative: buses are open, metro platforms can be high
+  two_wheeler: 1.0
+  car: 0.6                    # windows up, fan on fresh air
+
+road_factor:                  # roadside PM2.5 vs the area average, by road type on the route
+  motorway: 1.3
+  trunk: 1.3
+  primary: 1.2
+  secondary: 1.1
+  tertiary: 1.05
+  residential: 1.0
+  path: 1.0
+  unknown: 1.0
+
+mask_factor:                  # share still inhaled through a mask as worn by the public
+  none: 1.0
+  cloth: 0.8
+  surgical: 0.7
+  n95: 0.3
+
+# ---------------------------------------------------------------- indoor (mass balance)
+# indoor = P·a/(a+k+c) × outdoor  +  Σ emission/(V·(a+k+c))
+#   P penetration, a air exchange (1/h), k deposition (1/h), c purifier removal = CADR/V
+indoor:
+  penetration: 0.8
+  deposition_per_h: 0.4
+  air_exchange_per_h:         # tuned so the factors are 0.4 / 0.5 / 0.7 as in the design doc
+    closed: 0.4
+    normal: 0.666667            # 2/3
+    open: 2.8
+  default_purifier_removal_per_h: 1.066667 # CADR unknown: normal windows + purifier = 0.25
+  volume_m3:                  # floor area × 2.8 m ceiling
+    1rk: 70
+    1bhk: 125
+    2bhk: 210
+    3bhk: 310
+    4bhk_plus: 420
+    office: 1000
+  default_home_size: 2bhk
+  default_office_size: office
+  sources:                    # PM2.5 emission while running, mg per minute. Add new kinds here.
+    cooking_lpg: 1.0
+    cooking_electric: 0.5     # food itself emits, especially frying
+    cooking_kerosene: 5.0
+    cooking_biomass: 15.0     # wood, dung, crop residue
+    incense: 0.5
+    mosquito_coil: 2.0
+    smoking: 1.7              # ≈12 mg per cigarette over ~7 minutes
+    candle: 0.1
+  source_tips:                # what to suggest for each source; scale = share of its emission left
+    cooking_lpg:      {text: "Run the kitchen exhaust or open a window while cooking", scale: 0.5, free: true}
+    cooking_electric: {text: "Run the kitchen exhaust or open a window while cooking", scale: 0.5, free: true}
+    cooking_kerosene: {text: "Open a window and run the exhaust while cooking", scale: 0.5, free: true}
+    cooking_biomass:  {text: "Cook outside or under a chimney hood when you can", scale: 0.5, free: false}
+    incense:          {text: "Burn incense less often, or by an open window", scale: 0.5, free: true}
+    mosquito_coil:    {text: "Use a mosquito net or plug-in repellent instead of coils", scale: 0.0, free: false}
+    smoking:          {text: "Smoke outside, not indoors", scale: 0.0, free: true}
+    candle:           {text: "Light fewer candles indoors", scale: 0.5, free: true}
+
+# ---------------------------------------------------------------- sensitivity
+sensitivity:                  # UX weighting, not a clinical risk factor; highest applies
+  adult: 1.0
+  age_65_plus: 1.3
+  child_or_respiratory: 1.5
+
+# ---------------------------------------------------------------- air data correction
+air_correction:               # bend the gridded model towards nearby ground stations
+  radius_km: 30               # ignore stations farther than this
+  distance_floor_km: 1.0      # avoid infinite weight for a station on top of the cell
+  prior_weight: 0.01          # = one station at 10 km gets 50% trust
+  max_ratio: 4.0              # never scale the model by more than ×4 or less than ×1/4
+
+# ---------------------------------------------------------------- forecast
+forecast:
+  nowcast_tau_h: 6            # today's model error fades with this time constant
+  nowcast_max_ratio: 4.0
+  fire_risk_upwind_count:     # upwind fire detections in the last 48 h
+    low: 1
+    medium: 25
+    high: 100
+  fire_pm25_uplift_per_fire: 0.0   # not calibrated yet: flag only, no number change
+  fire_radius_km: 400         # smoke from crop and forest fires carries hundreds of km
+  fire_upwind_half_angle_deg: 45   # "upwind" = within ±45° of where tomorrow's wind comes from
+  fire_window_h: 48           # detections from the last two days
+
+# ---------------------------------------------------------------- uncertainty
+uncertainty:                  # log-normal spreads (σ of ln); known inputs use the tighter one
+  runs: 200
+  air_model: 0.45             # gridded model, no station nearby
+  air_corrected: 0.2          # after station correction
+  breathing_table: 0.25
+  breathing_personal: 0.15
+  penetration: 0.1
+  deposition: 0.3
+  air_exchange: 0.4
+  volume_unknown: 0.35
+  volume_known: 0.1
+  cadr_unknown: 0.4
+  cadr_known: 0.15
+  source_emission: 0.6
+  mask: 0.3
+  road: 0.1
+
+# ---------------------------------------------------------------- measured activity
+activity:
+  resting_hr_default: 70        # beats/min, when the wearable doesn't report resting HR
+  hr_max_intercept: 208         # Tanaka (2001): HRmax = 208 − 0.7 × age
+  hr_max_slope: 0.7
+  vo2max_factor: 15.3           # Uth (2004): VO2max ≈ 15.3 × HRmax / HRrest (ml/kg/min)
+  cadence_met:                  # steps/min → MET (CADENCE-Adults thresholds, interpolated)
+    - [0, 1.3]
+    - [60, 2.0]
+    - [100, 3.0]
+    - [130, 5.0]
+    - [160, 8.0]
+    - [180, 10.0]
+  kind_thresholds: {walk: 2.5, run: 6.0}   # MET at which a stretch is labelled walk / run
+
+tips:
+  max_tips: 3
+  commute_shift_options_minutes: [-120, -60, 60, 120]
+  min_saving_pct: 3           # don't suggest anything that saves less than this

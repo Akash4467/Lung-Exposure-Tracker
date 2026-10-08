@@ -1,0 +1,8 @@
+[Unit]
+Description=Lung Exposure Tracker: keep the DuckDNS record current
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /opt/lung/current/scripts/duckdns.sh

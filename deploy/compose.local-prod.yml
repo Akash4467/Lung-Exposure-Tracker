@@ -1,0 +1,58 @@
+# Runs compose.prod.yml on a laptop to test the production shape (Caddy -> 2 API replicas,
+# migrate job, worker, Postgres, Valkey) before it ever reaches AWS. Only what can't work
+# locally is swapped: images are built here, SQS is ElasticMQ, logs stay in Docker, and
+# Caddy uses its own CA for https://localhost on ports 8080/8443.
+#
+#   make prod-local        (see the Makefile for the variables it sets)
+
+services:
+  caddy:
+    ports: !override
+      - "${LOCAL_HTTP_PORT:-8080}:80"
+      - "${LOCAL_HTTPS_PORT:-8443}:443"
+    volumes: !override
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ../site:/srv/site:ro
+      - caddy-data:/data
+    logging: !override {driver: json-file}
+
+  migrate:
+    build: ../apps/api
+    environment: &local-aws
+      SQS_ENDPOINT_URL: http://elasticmq:9324
+      SQS_INGEST_URL: http://elasticmq:9324/000000000000/ingest-jobs
+      SQS_USER_URL: http://elasticmq:9324/000000000000/user-jobs
+      ENV: local
+    logging: !override {driver: json-file}
+
+  api:
+    build: ../apps/api
+    environment: *local-aws
+    logging: !override {driver: json-file}
+
+  worker:
+    build: ../apps/api
+    environment:
+      <<: *local-aws
+      LOCAL_TICK_MINUTES: "60"
+    depends_on:
+      elasticmq: {condition: service_started}
+    logging: !override {driver: json-file}
+
+  postgres:
+    build: ./postgres
+    volumes: !override
+      - pgdata-local-prod:/var/lib/postgresql/data
+    logging: !override {driver: json-file}
+
+  valkey:
+    logging: !override {driver: json-file}
+
+  elasticmq:
+    image: softwaremill/elasticmq-native:1.7.1
+    volumes: ["./elasticmq/elasticmq.conf:/opt/elasticmq.conf:ro"]
+    networks: [backend]
+
+volumes:
+  caddy-data: {}
+  pgdata-local-prod: {}

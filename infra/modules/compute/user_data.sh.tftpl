@@ -1,0 +1,44 @@
+#!/bin/bash
+# First boot only. Everything after this (compose files, scripts, timers) arrives with each
+# deploy bundle, so this script stays small and rarely changes.
+set -euxo pipefail
+
+# ---- Docker + Compose plugin
+dnf install -y docker
+systemctl enable --now docker
+mkdir -p /usr/libexec/docker/cli-plugins
+cd /tmp
+curl -fsSLO https://github.com/docker/compose/releases/latest/download/docker-compose-linux-aarch64
+curl -fsSLO https://github.com/docker/compose/releases/latest/download/docker-compose-linux-aarch64.sha256
+sha256sum -c docker-compose-linux-aarch64.sha256
+install -m 0755 docker-compose-linux-aarch64 /usr/libexec/docker/cli-plugins/docker-compose
+docker compose version
+
+# ---- Data disk for Postgres (formatted only if blank, so a re-attached disk keeps its data)
+DEV=/dev/disk/by-id/nvme-Amazon_Elastic_Block_Store_${data_volume_id}
+for _ in $(seq 1 60); do [ -e "$DEV" ] && break; sleep 5; done
+if ! blkid "$DEV"; then mkfs.xfs "$DEV"; fi
+mkdir -p /data
+UUID=$(blkid -s UUID -o value "$DEV")
+grep -q "$UUID" /etc/fstab || echo "UUID=$UUID /data xfs defaults,nofail 0 2" >> /etc/fstab
+mount -a
+mkdir -p /data/postgres /data/caddy
+
+# ---- 2 GB swap: headroom on a 2 GB instance during image pulls and migrations
+if [ ! -f /swapfile ]; then
+  dd if=/dev/zero of=/swapfile bs=1M count=2048
+  chmod 600 /swapfile
+  mkswap /swapfile
+  echo "/swapfile none swap sw 0 0" >> /etc/fstab
+fi
+swapon -a || true
+
+# ---- Where deploys land, and the facts the deploy script needs
+mkdir -p /opt/lung/releases
+cat > /etc/lung.env <<EOF
+LUNG_ENV=${env}
+AWS_REGION=${region}
+RELEASE_BUCKET=${release_bucket}
+SSM_PREFIX=/lung/${env}
+EOF
+chmod 0644 /etc/lung.env

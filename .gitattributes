@@ -1,0 +1,5 @@
+# Keep LF in the repo so shell scripts and Dockerfiles work on the Linux EC2 host
+* text=auto eol=lf
+*.pdf binary
+*.png binary
+*.jpg binary

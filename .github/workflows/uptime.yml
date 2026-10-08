@@ -1,0 +1,38 @@
+# Outside-in check: is the app reachable from the internet AND is its air data fresh?
+#
+# CloudWatch alarms run inside AWS and learn about problems from the app's own logs, so they
+# can't see "the server is up but unreachable" (Caddy, DNS, certificate). This can.
+# A failed run makes GitHub email the repo owner (Settings → Notifications → Actions).
+#
+# Setup: repo Settings → Secrets and variables → Actions → Variables → STATUS_URL =
+# https://<your-subdomain>.duckdns.org/status. Without it the job does nothing.
+# GitHub may delay scheduled runs by a few minutes and pauses them after 60 days without
+# repository activity.
+
+name: uptime
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  status:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    if: ${{ vars.STATUS_URL != '' }}
+    steps:
+      - name: GET /status (3 tries)
+        env:
+          STATUS_URL: ${{ vars.STATUS_URL }}
+        run: |
+          for i in 1 2 3; do
+            body=$(curl -sS --max-time 15 -w ' http=%{http_code}' "$STATUS_URL") || body="unreachable"
+            echo "try $i: $body"
+            case "$body" in *'"status":"ok"'*'http=200') exit 0 ;; esac
+            sleep 20
+          done
+          echo "::error::$STATUS_URL is down or its air data is stale (see the response above)"
+          exit 1

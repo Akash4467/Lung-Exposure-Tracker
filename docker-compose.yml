@@ -1,0 +1,71 @@
+# Local development stack. Production uses deploy/compose.prod.yml with real SQS.
+name: lung
+
+services:
+  postgres:
+    build: ./deploy/postgres
+    environment:
+      POSTGRES_USER: lung
+      POSTGRES_PASSWORD: lung
+      POSTGRES_DB: lung
+    ports: ["${PG_HOST_PORT:-55432}:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lung -d lung"]
+      interval: 5s
+      retries: 10
+
+  valkey:
+    image: valkey/valkey:8-alpine
+    command: ["valkey-server", "--appendonly", "yes"]
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      retries: 10
+
+  elasticmq:
+    image: softwaremill/elasticmq-native:1.7.1
+    ports: ["9324:9324"]
+    volumes: ["./deploy/elasticmq/elasticmq.conf:/opt/elasticmq.conf:ro"]
+
+  api:
+    build: ./apps/api
+    env_file:
+      - path: ./apps/api/.env
+        required: false
+    environment:
+      DATABASE_URL: postgresql+asyncpg://lung:lung@postgres:5432/lung
+      VALKEY_URL: redis://valkey:6379/0
+      SQS_ENDPOINT_URL: http://elasticmq:9324
+      SQS_INGEST_URL: http://elasticmq:9324/000000000000/ingest-jobs
+      SQS_USER_URL: http://elasticmq:9324/000000000000/user-jobs
+    ports: ["${API_HOST_PORT:-18000}:8000"]
+    depends_on: &deps
+      postgres: {condition: service_healthy}
+      valkey: {condition: service_healthy}
+      elasticmq: {condition: service_started}
+    profiles: [app]
+
+  worker:
+    build: ./apps/api
+    command: ["python", "-m", "lung.worker"]
+    env_file:
+      - path: ./apps/api/.env
+        required: false
+    environment:
+      DATABASE_URL: postgresql+asyncpg://lung:lung@postgres:5432/lung
+      VALKEY_URL: redis://valkey:6379/0
+      SQS_ENDPOINT_URL: http://elasticmq:9324
+      SQS_INGEST_URL: http://elasticmq:9324/000000000000/ingest-jobs
+      SQS_USER_URL: http://elasticmq:9324/000000000000/user-jobs
+      LOCAL_TICK_MINUTES: "60"   # stands in for EventBridge Scheduler
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os,sys,time; sys.exit(time.time() - os.path.getmtime('/tmp/worker-heartbeat') > 120)"]
+      interval: 30s
+      start_period: 30s
+    depends_on: *deps
+    profiles: [app]
+
+volumes:
+  pgdata:

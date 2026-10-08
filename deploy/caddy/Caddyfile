@@ -1,0 +1,59 @@
+# SITE_ADDRESS is set by deploy.sh:
+#   "lung-demo.duckdns.org"  -> Caddy gets and renews a Let's Encrypt certificate itself
+#   ":80"                    -> behind the ALB (TLS ends at the ALB)
+#   "localhost"              -> local test with Caddy's own internal CA
+
+{
+	email {$ACME_EMAIL}
+	servers {
+		trusted_proxies static private_ranges
+	}
+}
+
+{$SITE_ADDRESS} {
+	encode zstd gzip
+
+	request_body {
+		max_size 1MB
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+		Permissions-Policy "geolocation=(), camera=(), microphone=()"
+		-Server
+	}
+
+	# The deep readiness check (and the API docs) are for the server itself, not the internet.
+	# Each "handle" is exclusive and they're tried in order, so this must come first.
+	@internal path /ready /docs /docs/* /openapi.json
+	handle @internal {
+		respond 404
+	}
+
+	@api path /v1/* /health /status
+	handle @api {
+		reverse_proxy {
+			# Every running "api" container, found through Docker's DNS.
+			dynamic a api 8000 {
+				refresh 5s
+			}
+			lb_policy round_robin
+			# During a deploy, wait for a replica instead of failing the request.
+			lb_try_duration 15s
+			lb_try_interval 250ms
+			health_uri /health
+			health_interval 10s
+			fail_duration 10s
+		}
+	}
+
+	# Everything else: the download site (APK link, privacy policy).
+	handle {
+		root * /srv/site
+		try_files {path} {path}.html /index.html
+		file_server
+	}
+}
