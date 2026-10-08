@@ -8,6 +8,7 @@ from importlib.resources import files
 import yaml
 
 from lung.engine.config import EngineConfig, parse_config
+from lung.engine.footprint import FootprintConfig, parse_footprint
 
 
 @lru_cache
@@ -22,3 +23,9 @@ def engine_version() -> str:
     with different parameters can be told apart."""
     text = files("lung.engine").joinpath("config.yaml").read_bytes()
     return f"{version('lung')}+{hashlib.sha256(text).hexdigest()[:8]}"
+
+
+@lru_cache
+def load_footprint() -> FootprintConfig:
+    text = files("lung.engine").joinpath("footprint.yaml").read_text(encoding="utf-8")
+    return parse_footprint(yaml.safe_load(text))

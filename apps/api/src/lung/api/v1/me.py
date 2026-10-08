@@ -19,7 +19,7 @@ from lung.repositories.places import PlaceRow, SourceRow
 from lung.repositories.profiles import ProfileRow
 from lung.repositories.schedules import ScheduleRow
 from lung.repositories.visits import VisitRow
-from lung.services import commute_service, profile_service
+from lung.services import commute_service, footprint_service, profile_service
 from lung.services.profile_service import FullProfile, IndoorUpdate
 
 router = APIRouter(prefix="/v1/me", tags=["me"])
@@ -163,3 +163,11 @@ async def delete_device(
 async def delete_me(user_id: UserId, ctx: Ctx) -> None:
     """Delete the account and everything stored about it. Cannot be undone."""
     await profile_service.delete_account(ctx, user_id)
+
+
+@router.get("/footprint")
+async def get_footprint(user_id: UserId, ctx: Ctx) -> dict[str, Any]:
+    """Estimated CO2 of the commute, every way of making it, and the best realistic swap
+    (e.g. two days a week by metro). Climate, not the PM2.5 behind Lung Load. Ranges, with
+    the published sources the factors come from."""
+    return await footprint_service.footprint(ctx, user_id)

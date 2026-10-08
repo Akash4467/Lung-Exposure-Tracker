@@ -7,7 +7,7 @@ from pydantic import AwareDatetime, Field, field_validator
 from lung.api.schemas.common import HHMM, Model
 
 Windows = Literal["closed", "normal", "open"]
-CommuteMode = Literal["walk", "cycle", "bus_metro", "two_wheeler", "car"]
+CommuteMode = Literal["walk", "cycle", "bus", "metro", "two_wheeler", "car"]
 Mask = Literal["none", "cloth", "surgical", "n95"]
 Activity = Literal["asleep", "light", "walk", "run", "cycle"]
 

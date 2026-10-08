@@ -73,7 +73,7 @@ Minutes with the same place, activity, exertion, sources and "observed" flag mer
 
 ### Recorded trips (opt-in "Record my trips")
 
-When recording is on, the minutes you were actually travelling replace the guessed day. Each recorded leg has a way of travelling (walk, run, cycle, bus/metro, two-wheeler, car) and the grid cell it went through:
+When recording is on, the minutes you were actually travelling replace the guessed day. Each recorded leg has a way of travelling (walk, run, cycle, bus, metro, two-wheeler, car) and the grid cell it went through:
 
 ```
 leg air you breathe = PM2.5 of the leg's cell × (1.0 on foot or bike, else the vehicle factor) × mask
@@ -144,7 +144,7 @@ commute factor = vehicle factor × road factor      (per route point)
 | --- | --- | --- |
 | Walk | 1.0 | walk |
 | Cycle | 1.0 | cycle |
-| Bus / metro | 1.0 (open buses, busy platforms; includes walking to stops) | walk |
+| Bus, metro | 1.0 (open buses, busy platforms; includes walking to stops) | walk |
 | Two-wheeler | 1.0 | light (seated) |
 | Car | 0.6 (windows up, fan on fresh air) | light |
 
@@ -187,7 +187,7 @@ Example: 35-year-old man, 70 kg, sitting: BMR = 11.6 × 70 + 879 = 1691 kcal/day
 | --- | --- | --- | --- |
 | Asleep | 0.45 | 0.38 | 0.35 |
 | Light (sitting, home, office, car, two-wheeler) | 0.80 | 0.70 | 0.60 |
-| Walking (also bus/metro) | 1.40 | 1.20 | 1.00 |
+| Walking (also bus and metro) | 1.40 | 1.20 | 1.00 |
 | Cycling | 2.40 | 2.00 | 1.60 |
 | Running | 3.00 | 2.60 | 2.00 |
 
@@ -286,6 +286,7 @@ Forecast refinement (**nowcast**, when stations are connected): today's model er
 | **Average breathing** | mean of the daily L/min |
 | **Dose while walking, running or cycling** | mean over the days of (walk + run + cycle share of the dose) |
 | **Days by level** | how many days were Low / Elevated / High |
+| **Commute footprint** card | estimated kg CO₂ a week for the commute and the best realistic swap: see [section 12](#12-commute-footprint-co) |
 
 ### Map
 
@@ -306,7 +307,7 @@ Example (test account, 22 km, roadside ≈ 130 µg/m³, no mask; this profile's 
 | --- | --- | --- |
 | Car | 130 × 0.6 × 0.62 | ≈ 48 |
 | Two-wheeler | 130 × 1.0 × 0.62 | ≈ 80 |
-| Walk, bus/metro | 130 × 1.0 × 1.07 | ≈ 139 |
+| Walk, bus, metro | 130 × 1.0 × 1.07 | ≈ 139 |
 | Cycle | 130 × 1.0 × 2.08 | ≈ 270 |
 
 ### What if
@@ -387,3 +388,42 @@ Rules: keep at most **3**, each saving at least **3 %**; offer only one commute 
 - **Population averages:** breathing rates, indoor factors, emissions and masks are averages from published studies (see [engine-parameters.md](engine-parameters.md) for each source and which still need checking against primary sources). Your real day varies.
 - **Estimates, not measurements, and not medical advice.** Lung Load ranks days and shows what would help; it says nothing about the health of anyone's lungs.
 - The cigarette comparison and the sensitivity multiplier are communication aids, not clinical numbers.
+
+## 12. Commute footprint (CO₂)
+
+The Trends card **Commute footprint · estimate** and its detail screen. This is **climate (CO₂), not the PM2.5 you breathe**: it never changes Lung Load, and the app never calls it "air pollution saved".
+
+**Inputs we already have:** the way you commute (profile), your office days, and the length of your stored commute route by road (one way). If you record trips (opt-in), the last 7 days of recorded legs too.
+
+**Formulas** (`engine/footprint.py`, factors in `engine/footprint.yaml`):
+
+- Week km = 2 × one-way km × office days
+- Week kg = week km × factor for your mode, as a range [low, central, high]
+- Year kg = week kg × 48 working weeks
+- Swap: `2 × one-way km × min(2, office days)` km done another way. Saving = km × (your factor − theirs): central uses both centrals; the **pessimistic end** uses your low minus their high. A saving is **clear** only if even the pessimistic end saves something. A clear saving beats a bigger but uncertain one.
+- Only walking, cycling, bus and metro are suggested, never a car or two-wheeler. Walking is offered up to 2 km one way, cycling up to 8 km.
+- No clear swap and you don't drive: **"Compared with driving alone, you avoid about X kg a week"** = week km × (car central − your central).
+- Recorded legs: km per mode × factor (running counts as walking). The phone can't tell a car from a bus, so vehicle legs count as the vehicle in your profile.
+
+**Factors** (kg CO₂ per passenger-km):
+
+| Mode | Low | Central | High | Where from |
+| --- | --- | --- | --- | --- |
+| Walk, cycle | 0 | 0 | 0 | |
+| Bus | 0.0114 | 0.0152 | 0.0303 | India GHG Program 2015: city bus 0.015161 per passenger-km. **Low/high are our assumption** for how full the bus is (×0.75 / ×2) |
+| Two-wheeler | 0.0319 | 0.0368 | 0.0458 | India GHG Program 2015, with uplift: motorcycle < 125 cc / scooter < 110 cc / motorcycle < 200 cc |
+| Metro | 0.020 | 0.040 | 0.061 | High: Delhi Metro 61 g (UNEP DTU 2014, FY2010-11 electricity). Low: 20 g, bottom of the 20-50 g range for rail transit in developing countries (Sperling et al. 2004, cited there). Central: midpoint |
+| Car (alone) | 0.111 | 0.140 | 0.213 | India GHG Program 2015, petrol with uplift: small < 800 cc / hatchback < 1400 cc / SUV < 3000 cc |
+
+Sources: India GHG Program (WRI India, CII, TERI), *India Specific Road Transport Emission Factors*, 2015 ([indiaghgp.org](https://indiaghgp.org/road-transport-emission-factors)); UNEP DTU Partnership, *Case Study of Metro Rail in Indian Cities*, 2014 ([PDF](https://unepccc.org/wp-content/uploads/2014/08/case-study-of-metro-final.pdf)).
+
+**What the numbers say, honestly:**
+
+- Per km, the **bus** is the lowest-CO₂ motorised option. The **metro is no better than a scooter** (40 vs 37 g/km central, overlapping ranges), so the app never suggests the metro to a two-wheeler rider.
+- A **car driven alone** is 3-4× a two-wheeler and ~9× a bus.
+- **Not counted:** fuel production and power-station losses for road vehicles, making the vehicles, roads and tracks. Road values are tailpipe; metro is the power stations' share. Life-cycle studies (e.g. ITF 2023, *Life-Cycle Assessment of Passenger Transport: An Indian Case Study*) add roughly 5-20 g/pkm of infrastructure on top, most for cars.
+- The metro figure comes from a 2011 grid (0.943 kg CO₂/kWh); India's grid is less coal-heavy now, so the current metro figure is probably nearer the middle of the range.
+- Metro and bus distance = the road route's distance (no rail routing).
+
+**Worked example (test account, 8 Oct 2026):** bus, 21.2 km each way, 5 days → 212 km a week × 0.0152 = **3.2 kg** (2.4-6.4); about 155 kg a year. Nothing realistic beats the bus at 21 km, so the card says: compared with driving alone, about **26 kg a week** avoided (212 × (0.140 − 0.0152)).
+

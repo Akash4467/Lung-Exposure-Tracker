@@ -35,7 +35,7 @@ MAX_ACCURACY_M = 100
 MAX_GAP = timedelta(minutes=10)
 MIN_LEG = timedelta(minutes=2)
 MAX_PATH_POINTS = 30
-VEHICLES = ("bus_metro", "two_wheeler", "car")
+VEHICLES = ("bus", "metro", "two_wheeler", "car")
 ACTIVITY_TO_MODE = {"walking": "walk", "running": "run", "cycling": "cycle"}
 
 
@@ -51,7 +51,7 @@ class GpsPoint:
 
 
 def vehicle_for(declared: str) -> str:
-    return declared if declared in VEHICLES else "bus_metro"
+    return declared if declared in VEHICLES else "bus"
 
 
 def classify(speed: float, activity: str | None, confident: bool, declared: str) -> str | None:
@@ -146,7 +146,7 @@ async def add_points(ctx: AppContext, user_id: UUID, points: list[GpsPoint]) -> 
             raise InvalidInput("points must be from the last 48 hours", "bad_point")
     async with ctx.db.session() as s:
         sched = await schedules_repo.get(s, user_id)
-        declared = sched.commute_mode if sched else "bus_metro"
+        declared = sched.commute_mode if sched else "bus"
         legs = build_legs(points, declared, ctx.settings.cell_resolution_deg)
         await travel_repo.add_many(s, user_id, legs)
     if legs:

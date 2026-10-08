@@ -17,7 +17,8 @@ SOURCE = "openrouteservice"
 PROFILE_BY_MODE = {
     "walk": "foot-walking",
     "cycle": "cycling-regular",
-    "bus_metro": "driving-car",
+    "bus": "driving-car",
+    "metro": "driving-car",  # no rail routing: the road route stands in
     "two_wheeler": "driving-car",
     "car": "driving-car",
 }

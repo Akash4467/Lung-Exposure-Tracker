@@ -48,9 +48,7 @@ const modeLabel = (m: string) =>
       ? 'Cycle'
       : m === 'two_wheeler'
         ? '2-wheeler'
-        : m === 'bus_metro'
-          ? 'Bus/metro'
-          : (MODES.find((x) => x.value === m)?.label ?? m);
+        : (MODES.find((x) => x.value === m)?.label ?? m);
 
 export function minutes(m: number) {
   if (m < 60) return `${m} min`;

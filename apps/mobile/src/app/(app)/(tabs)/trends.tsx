@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { StyleSheet, View } from 'react-native';
 import Svg, { Line, Rect } from 'react-native-svg';
 
+import { FootprintCard } from '@/components/footprint-card';
 import { QueryState } from '@/components/query-state';
 import { BandBadge } from '@/components/score';
 import { AppText, Card, Disclaimer, Overline, Screen } from '@/components/ui';
@@ -36,13 +37,16 @@ function Body({ h }: { h: HistoryOut }) {
   const ins = h.insights;
   if (h.days.length < 2) {
     return (
-      <Card>
-        <AppText variant="heading">Your trends build up day by day</AppText>
-        <AppText muted>
-          Come back tomorrow to compare. After a week you'll see how this week went against the
-          last one.
-        </AppText>
-      </Card>
+      <>
+        <Card>
+          <AppText variant="heading">Your trends build up day by day</AppText>
+          <AppText muted>
+            Come back tomorrow to compare. After a week you'll see how this week went against the
+            last one.
+          </AppText>
+        </Card>
+        <FootprintCard />
+      </>
     );
   }
   const better = ins.change_pct !== null && ins.change_pct < 0;
@@ -106,8 +110,8 @@ function Body({ h }: { h: HistoryOut }) {
         />
         {ins.exercise_share >= 0.1 ? (
           <AppText variant="caption" muted>
-            A good share of your dose comes while exercising. On high days, the cleaner hours on
-            the Tomorrow tab are the best time to go out.
+            A good share of your dose comes while exercising. On high days, the cleaner hours on the
+            Tomorrow tab are the best time to go out.
           </AppText>
         ) : null}
       </Card>
@@ -123,6 +127,7 @@ function Body({ h }: { h: HistoryOut }) {
           ))}
         </View>
       </Card>
+      <FootprintCard />
       <Disclaimer />
     </>
   );

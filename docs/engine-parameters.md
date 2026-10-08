@@ -44,7 +44,7 @@ The reference dose has no indoor, cabin or mask benefit, so protecting yourself 
 | --- | --- | --- | --- | --- |
 | asleep | 0.45 | 0.38 | 0.35 | Range-based, **Verify** |
 | light (indoors, seated, car, two-wheeler) | 0.80 | 0.70 | 0.60 | Range-based, **Verify** |
-| walk (walking, bus/metro incl. walking to stops) | 1.40 | 1.20 | 1.00 | Range-based, **Verify** |
+| walk (walking, bus and metro incl. walking to stops) | 1.40 | 1.20 | 1.00 | Range-based, **Verify** |
 | cycle | 2.40 | 2.00 | 1.60 | Range-based, **Verify** |
 | run (jogging/running, ~8 METs) | 3.00 | 2.60 | 2.00 | Range-based, **Verify** (EFH "high intensity" rows) |
 
@@ -89,7 +89,7 @@ When the phone or a watch measures what the person was doing, that replaces the 
 | --- | --- | --- | --- |
 | walk | walk | 1.0 | Outdoors |
 | cycle | cycle | 1.0 | Outdoors |
-| bus_metro | walk | 1.0 | Walking to stops is a big part of the trip; metro platforms can be as bad as the street, so no benefit is claimed |
+| bus, metro | walk | 1.0 | Walking to stops is a big part of the trip; metro platforms can be as bad as the street, so no benefit is claimed (one option until 8 Oct 2026; split for the commute footprint, same values) |
 | two_wheeler | light | 1.0 | Seated, in open air. The design doc said "walk"; changed so the dose isn't overstated |
 | car | light | 0.6 | Range-based, **Verify**: in-car studies report cabin PM2.5 well below outside with windows up. 0.6 assumes the fan on fresh air, which is cautious |
 

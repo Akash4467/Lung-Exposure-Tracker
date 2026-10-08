@@ -84,9 +84,9 @@ async def test_route_planner(client: httpx.AsyncClient, ctx: AppContext) -> None
     assert all(len(p) == 3 for p in fast["path"])  # [lat, lon, roadside pm2.5]
 
     modes = {m["mode"]: m for m in plan["modes"]}
-    assert set(modes) == {"car", "two_wheeler", "bus_metro", "cycle", "walk"}
+    assert set(modes) == {"car", "two_wheeler", "bus", "metro", "cycle", "walk"}
     assert modes["car"]["dose_ug"] < modes["two_wheeler"]["dose_ug"]  # cabin keeps some out
-    assert modes["bus_metro"]["duration_min"] > modes["car"]["duration_min"]
+    assert modes["bus"]["duration_min"] > modes["car"]["duration_min"]
     assert plan["modes"][0]["dose_ug"] <= plan["modes"][-1]["dose_ug"]  # sorted
     assert plan["routes_from"] == "openrouteservice"
 

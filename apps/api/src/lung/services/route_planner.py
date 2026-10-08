@@ -36,6 +36,7 @@ ALTERNATIVES_UNDER_KM = 80  # ORS offers alternative routes only on shorter trip
 STRAIGHT_SPEED_KMH = {"driving-car": 28, "cycling-regular": 14, "foot-walking": 4.8}
 DETOUR = 1.3  # straight-line fallback: roads are ~30 % longer than the crow flies
 BUS_SLOWER = 1.3  # buses stop; same roads as the drive, ~30 % longer
+METRO_SLOWER = 1.0  # rough: faster than traffic, plus the walk to and from stations
 
 log = structlog.get_logger()
 
@@ -189,7 +190,8 @@ async def plan(ctx: AppContext, user_id: UUID, start: LatLon, end: LatLon) -> di
     drive = cleanest or fastest
     add("car", drive)
     add("two_wheeler", drive)
-    add("bus_metro", drive, BUS_SLOWER)
+    add("bus", drive, BUS_SLOWER)
+    add("metro", drive, METRO_SLOWER)
     add("cycle", next((o for o in options if o["profile"] == "cycling-regular"), None))
     add("walk", next((o for o in options if o["profile"] == "foot-walking"), None))
     modes.sort(key=lambda m: m["dose_ug"])

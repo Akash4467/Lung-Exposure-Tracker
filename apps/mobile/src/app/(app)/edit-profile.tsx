@@ -44,6 +44,7 @@ function Form({ p }: { p: ProfileOut }) {
       await Promise.all([
         qc.invalidateQueries({ queryKey: ['score'] }),
         qc.invalidateQueries({ queryKey: ['simulate'] }),
+        qc.invalidateQueries({ queryKey: keys.footprint }), // commute mode or office days
       ]);
       goBack('/settings');
     },

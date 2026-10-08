@@ -50,14 +50,16 @@ breathing_personal:
 commute_activity:             # what the body is doing on each mode
   walk: walk
   cycle: cycle
-  bus_metro: walk             # includes walking to and from stops
+  bus: walk                   # includes walking to and from stops
+  metro: walk
   two_wheeler: light          # seated; breathing close to resting
   car: light
 
 commute_factor:               # share of outdoor PM2.5 reaching the person
   walk: 1.0
   cycle: 1.0
-  bus_metro: 1.0              # conservative: buses are open, metro platforms can be high
+  bus: 1.0                    # conservative: buses are open
+  metro: 1.0                  # conservative too: platforms and stations can be high
   two_wheeler: 1.0
   car: 0.6                    # windows up, fan on fresh air
 

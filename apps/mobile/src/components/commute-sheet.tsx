@@ -14,7 +14,7 @@ import { radius, space, useColors } from '@/theme';
 
 export type Leg = 'morning' | 'evening';
 
-const SHORT: Record<string, string> = { two_wheeler: '2-wheeler', bus_metro: 'Bus/metro' };
+const SHORT: Record<string, string> = { two_wheeler: '2-wheeler', metro: 'Metro' };
 const modeLabel = (m: string) => MODES.find((x) => x.value === m)?.label ?? m;
 const shortMode = (m: string) => SHORT[m] ?? modeLabel(m);
 

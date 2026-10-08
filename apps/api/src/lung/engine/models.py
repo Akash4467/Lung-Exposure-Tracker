@@ -13,7 +13,7 @@ Sex = Literal["man", "woman", "other"]
 Place = Literal["home", "office", "commute"]
 Activity = Literal["asleep", "light", "walk", "run", "cycle"]
 Band = Literal["green", "amber", "red"]
-CommuteMode = Literal["walk", "cycle", "bus_metro", "two_wheeler", "car"]
+CommuteMode = Literal["walk", "cycle", "bus", "metro", "two_wheeler", "car"]
 Windows = Literal["closed", "normal", "open"]
 Mask = Literal["none", "cloth", "surgical", "n95"]
 FireRisk = Literal["none", "low", "medium", "high"]
@@ -104,7 +104,7 @@ class Visit:
     activity: Activity | None = None  # from activity recognition, if known
 
 
-TravelMode = Literal["walk", "run", "cycle", "bus_metro", "two_wheeler", "car"]
+TravelMode = Literal["walk", "run", "cycle", "bus", "metro", "two_wheeler", "car"]
 
 
 @dataclass(frozen=True)

@@ -36,7 +36,7 @@ PROFILE: dict[str, Any] = {
         "leave_office": "17:30",
         "arrive_home": "18:00",
         "sleep": "23:00",
-        "commute_mode": "bus_metro",
+        "commute_mode": "metro",
         "office_days": [1, 2, 3, 4, 5, 6, 7],
     },
 }

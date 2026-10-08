@@ -30,6 +30,7 @@ export default function AppLayout() {
         <Stack.Screen name="indoor" options={{ title: 'Home & sources' }} />
         <Stack.Screen name="log-activity" options={{ title: 'Log activity' }} />
         <Stack.Screen name="simulate" options={{ title: 'What if…' }} />
+        <Stack.Screen name="footprint" options={{ title: 'Commute footprint' }} />
       </Stack>
     </AreaGate>
   );

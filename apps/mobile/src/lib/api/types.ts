@@ -7,7 +7,7 @@ import type { Band } from '@/theme';
 export type { Band };
 export type Sex = 'man' | 'woman' | 'other';
 export type Windows = 'closed' | 'normal' | 'open';
-export type CommuteMode = 'walk' | 'cycle' | 'bus_metro' | 'two_wheeler' | 'car';
+export type CommuteMode = 'walk' | 'cycle' | 'bus' | 'metro' | 'two_wheeler' | 'car';
 export type Mask = 'none' | 'cloth' | 'surgical' | 'n95';
 export type Activity = 'asleep' | 'light' | 'walk' | 'run' | 'cycle';
 export type HHMM = string; // "08:30", local wall-clock time
@@ -226,7 +226,12 @@ export interface PlaceAirOut {
   utc_offset_s: number;
   now: { pm25: number; pm10: number | null; hour: string } | null;
   hours: { hour: string; pm25: number; is_forecast: boolean }[];
-  days: { date: string; avg_pm25: number; max_pm25: number; best_hours: string[] }[];
+  days: {
+    date: string;
+    avg_pm25: number;
+    max_pm25: number;
+    best_hours: string[];
+  }[];
   source: string;
   estimated: true;
 }
@@ -234,7 +239,12 @@ export interface PlaceAirOut {
 export interface CommuteLeg {
   depart: string; // UTC hour
   avg_pm25: number | null;
-  points: { lat: number; lon: number; road_class: string; pm25: number | null }[];
+  points: {
+    lat: number;
+    lon: number;
+    road_class: string;
+    pm25: number | null;
+  }[];
 }
 
 export interface CommuteOut {
@@ -271,8 +281,7 @@ export interface TripOut extends TripIn {
 }
 
 export type LocationIn =
-  | { kind: 'home' }
-  | { kind: 'place'; label: string; lat: number; lon: number };
+  { kind: 'home' } | { kind: 'place'; label: string; lat: number; lon: number };
 
 export type LocationOut = { kind: 'home' } | { kind: 'trip'; trip: TripOut };
 
@@ -290,7 +299,7 @@ export interface TravelLegOut {
   id: number;
   start: string;
   end: string;
-  mode: 'walk' | 'run' | 'cycle' | 'bus_metro' | 'two_wheeler' | 'car';
+  mode: 'walk' | 'run' | 'cycle' | 'bus' | 'metro' | 'two_wheeler' | 'car';
   distance_m: number;
   path: [number, number][]; // [lat, lon], simplified
   source: 'gps' | 'gps+activity';
@@ -356,5 +365,52 @@ export interface Catalog {
 }
 
 export interface ApiErrorBody {
-  error: { code: string; message: string; details?: { field: string; message: string }[] };
+  error: {
+    code: string;
+    message: string;
+    details?: { field: string; message: string }[];
+  };
+}
+
+/** GET /v1/me/footprint: estimated CO2 of the commute (climate, not Lung Load). */
+export interface KgRange {
+  low: number;
+  central: number;
+  high: number;
+}
+
+export interface FootprintMode {
+  mode: CommuteMode;
+  g_per_km: KgRange;
+  week_kg: KgRange;
+  current: boolean;
+}
+
+export interface FootprintOut {
+  estimate: true;
+  unit: 'kg CO2';
+  commute: {
+    mode: CommuteMode;
+    one_way_km: number;
+    days_per_week: number;
+    week_km: number;
+    week_kg: KgRange;
+    year_kg: KgRange;
+    modes: FootprintMode[];
+    vs_car_week_kg: KgRange | null;
+    suggestion: {
+      mode: CommuteMode;
+      days_per_week: number;
+      week_kg_saved: KgRange;
+      year_kg_saved: KgRange;
+      clear: boolean;
+    } | null;
+    route: string;
+  } | null;
+  recorded: {
+    days: number;
+    total_kg: KgRange;
+    by_mode: { mode: string; km: number; kg: KgRange }[];
+  } | null;
+  sources: { title: string; publisher: string; year: number; url: string }[];
 }

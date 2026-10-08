@@ -542,6 +542,19 @@ Asked for 2026-10-05: a scrollable world map with the pollution around you, any 
 - Code: `services/warm_service.py` (box/point → cells), `ingest_service.tick` (in-use ∪ warm). Tests: `tests/unit/test_warm_areas.py`, `test_tick_also_keeps_popular_areas_warm`.
 - Checked live: first tick after the change queued 58 areas (3 in use), 55 new areas had fresh data within a minute; a Noida area had 96 hours stored with no user there.
 
+## Commute footprint (CO₂), 8 Oct 2026
+
+- **What:** a Trends card ("Commute footprint · estimate": kg CO₂ a week, range, one sentence) and a detail screen (every way of making the commute side by side with range bands, the best swap, recorded trips, how we estimate, sources). For example: "Two days a week by bus would save about 5 kg a week (about 240 kg a year)." Low-carbon commuters see what they avoid compared with driving alone.
+- **Decisions (user):** Trends card + detail; India-specific factors with ranges; bus and metro split into two options.
+- **Honesty rules:** every figure is a range and labelled an estimate; CO₂, never "air pollution saved"; a swap is "clear" only if it saves even at the pessimistic end, otherwise "might save … the estimates overlap"; never suggests a car or two-wheeler; walk ≤ 2 km, cycle ≤ 8 km one way.
+- **Finding:** per km the metro (UNEP DTU 2014 / Sperling 2004: 20-61 g) is no better than a scooter (India GHG 2015: 32-46 g); the bus (15 g) is lowest. So the app suggests the bus, not the metro, to two-wheeler riders.
+- **Bus/metro split:** migration `0006` (existing `bus_metro` → `bus`; switch to metro in the profile), engine config, route planner (metro uses the road route's time for now), trip recording, app labels. Exposure factors for metro are kept the same as bus (conservative) until we have a source.
+- **API:** `GET /v1/me/footprint`. **Code:** `engine/footprint.py` + `footprint.yaml` (factors and sources), `services/footprint_service.py`; app `components/footprint-card.tsx`, `app/(app)/footprint.tsx`, `lib/footprint.ts`.
+- **Also fixed:** `load_inputs` used the wall clock for "today" instead of the app clock, so trip tests broke once the real date ran more than 2 days past the tests' fixed day. No effect for users (the two clocks are the same in production).
+- **Tests:** 8 unit (`test_footprint.py`), 2 integration, 7 Jest (`footprint.test.ts`, including "never calls CO₂ air pollution"). Totals: 173 unit + 83 integration + 68 Jest.
+- **Checked on real data:** the user's account (bus, 21.2 km, 5 days) → 3.2 kg a week (2.4-6.4); no swap beats the bus; about 26 kg a week avoided compared with driving. Not yet seen on the phone (Metro and the API were stopped for low memory).
+- Formulas, factors and sources: [how-the-numbers-work.md §12](how-the-numbers-work.md#12-commute-footprint-co).
+
 ## Layer 7: real-world data and monitoring (in progress)
 
 | Part | What | Status |
@@ -676,12 +689,14 @@ Keys live only in `apps/api/.env` (git-ignored). `make smoke` checks them withou
 - [ ] First git commit and push to GitHub (by the user), then the AWS setup in [deployment.md](deployment.md).
 - [ ] Deploys pause requests for up to ~15 s (both API replicas restart together). True zero-downtime needs the ALB + 2 instances (`envs/scale`) or a blue/green step.
 - [ ] Decide whether to move the original design PDF and `.md` into `docs/design/`.
+- [ ] Commute footprint: find a source for metro in-cabin PM2.5 (metro uses the bus exposure factor now) and for metro trip time (uses the road route's time); refresh the metro CO₂ factor with current grid data.
 
 ## Changelog
 
 | Date | Change |
 | --- | --- |
 | 2026-10-03 | Stack decisions agreed; layer 1 (foundation) and layer 2 (engine) completed; docs created |
+| 2026-10-08 | Commute footprint (CO₂): Trends card + detail, India-specific factors with ranges and sources; bus and metro split (migration 0006) |
 | 2026-10-06 | Layer 7c monitoring: log metrics, 3 app alarms, dashboard, public `/status` + GitHub uptime check |
 | 2026-10-06 | Push alerts checked end to end: a real FCM push arrived on the phone |
 | 2026-10-06 | Popular areas kept warm: Delhi NCR + 10 metro centres fetched hourly before anyone lives there (`warm_areas.yaml`) |

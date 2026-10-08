@@ -68,7 +68,7 @@ async def main() -> None:
                     s,
                     DEMO_USER,
                     ScheduleRow(
-                        time(7), time(8, 30), time(9, 30), time(18), time(19), time(23), "bus_metro"
+                        time(7), time(8, 30), time(9, 30), time(18), time(19), time(23), "metro"
                     ),
                 )
             source = await route_service.compute_route(ctx, DEMO_USER)

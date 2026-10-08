@@ -18,7 +18,7 @@ def test_classify_by_speed() -> None:
     assert classify(3.5, None, False, "car") == "run"
     assert classify(6.0, None, False, "cycle") == "cycle"
     assert classify(6.0, None, False, "car") == "car"
-    assert classify(15.0, None, False, "walk") == "bus_metro"  # walked to work: a bus
+    assert classify(15.0, None, False, "walk") == "bus"  # walked to work: a bus
     assert classify(15.0, None, False, "two_wheeler") == "two_wheeler"
 
 

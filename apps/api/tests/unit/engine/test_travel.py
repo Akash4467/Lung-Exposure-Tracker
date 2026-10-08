@@ -22,7 +22,7 @@ def _at(h: int, m: int = 0) -> datetime:
 def test_mode_mapping(cfg: EngineConfig) -> None:
     assert travel_activity("run", cfg) == "run"
     assert travel_activity("car", cfg) == "light"
-    assert travel_activity("bus_metro", cfg) == "walk"
+    assert travel_activity("bus", cfg) == "walk"
     assert travel_factor("walk", cfg) == 1.0
     assert travel_factor("car", cfg) == cfg.commute_factor["car"]
 

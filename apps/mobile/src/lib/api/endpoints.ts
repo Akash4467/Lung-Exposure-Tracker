@@ -5,6 +5,7 @@ import type {
   ActivityIn,
   Catalog,
   CommuteOut,
+  FootprintOut,
   GridOut,
   HistoryOut,
   LocationIn,
@@ -58,6 +59,7 @@ export const meApi = {
     api<void>(`/v1/me/devices/${encodeURIComponent(token)}`, { method: 'DELETE' }),
   deleteAccount: () => api<void>('/v1/me', { method: 'DELETE' }),
   commute: () => api<CommuteOut>('/v1/me/commute'),
+  footprint: () => api<FootprintOut>('/v1/me/footprint'),
 };
 
 export const scoreApi = {

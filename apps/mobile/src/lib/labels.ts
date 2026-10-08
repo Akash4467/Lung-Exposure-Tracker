@@ -6,7 +6,8 @@ import type { CommuteMode, Windows } from './api/types';
 export const MODES: readonly { value: CommuteMode; label: string }[] = [
   { value: 'walk', label: 'Walk' },
   { value: 'cycle', label: 'Cycle' },
-  { value: 'bus_metro', label: 'Bus / metro' },
+  { value: 'bus', label: 'Bus' },
+  { value: 'metro', label: 'Metro' },
   { value: 'two_wheeler', label: 'Two-wheeler' },
   { value: 'car', label: 'Car' },
 ];

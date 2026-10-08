@@ -332,7 +332,7 @@ async def make_user(
                 time(17, 30),
                 time(18),
                 time(23),
-                "bus_metro",
+                "metro",
                 office_days=office_days,
             ),
         )

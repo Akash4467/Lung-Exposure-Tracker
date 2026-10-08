@@ -162,7 +162,7 @@ async def _readings(
 async def recompute(ctx: AppContext, user_id: UUID) -> Outcome:
     now = ctx.clock()
     async with ctx.db.session() as s:
-        inputs = await load_inputs(s, user_id, ctx.settings.cell_resolution_deg)
+        inputs = await load_inputs(s, user_id, ctx.settings.cell_resolution_deg, ctx.clock())
     today = now.astimezone(ZoneInfo(inputs.tz)).date()
     tomorrow = today + timedelta(days=1)
     start, _ = inputs.local_day_window(today)
@@ -277,7 +277,7 @@ async def get_or_compute(ctx: AppContext, user_id: UUID, is_forecast: bool) -> S
     """Today's (or tomorrow's) stored score; computed on the spot if missing or stale."""
     async with ctx.db.session() as s:
         try:
-            inputs = await load_inputs(s, user_id, ctx.settings.cell_resolution_deg)
+            inputs = await load_inputs(s, user_id, ctx.settings.cell_resolution_deg, ctx.clock())
         except ProfileIncompleteError as e:
             raise NotFound("finish onboarding first", "profile_incomplete") from e
     day = local_today(inputs.tz, ctx.clock()) + timedelta(days=1 if is_forecast else 0)
@@ -336,7 +336,7 @@ async def simulate_today(ctx: AppContext, user_id: UUID, change: Change) -> Toda
     today were a workday, and the result says so."""
     async with ctx.db.session() as s:
         try:
-            inputs = await load_inputs(s, user_id, ctx.settings.cell_resolution_deg)
+            inputs = await load_inputs(s, user_id, ctx.settings.cell_resolution_deg, ctx.clock())
         except ProfileIncompleteError as e:
             raise NotFound("finish onboarding first", "profile_incomplete") from e
     today = local_today(inputs.tz, ctx.clock())
@@ -421,7 +421,7 @@ async def history(ctx: AppContext, user_id: UUID, days: int) -> History:
         raise InvalidInput("days must be between 1 and 90", "bad_days")
     async with ctx.db.session() as s:
         try:
-            inputs = await load_inputs(s, user_id, ctx.settings.cell_resolution_deg)
+            inputs = await load_inputs(s, user_id, ctx.settings.cell_resolution_deg, ctx.clock())
         except ProfileIncompleteError as e:
             raise NotFound("finish onboarding first", "profile_incomplete") from e
         today = local_today(inputs.tz, ctx.clock())

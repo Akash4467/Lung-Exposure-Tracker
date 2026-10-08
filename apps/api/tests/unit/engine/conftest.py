@@ -45,7 +45,7 @@ EXAMPLE_SCHEDULE = Schedule(
     leave_office=time(17, 0),
     arrive_home=time(17, 30),
     sleep=time(0, 0),
-    commute_mode="bus_metro",
+    commute_mode="metro",
 )
 EXAMPLE_PLAN = DayPlan(
     schedule=EXAMPLE_SCHEDULE,

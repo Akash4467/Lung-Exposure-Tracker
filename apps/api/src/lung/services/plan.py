@@ -109,15 +109,18 @@ def _indoor(p: PlaceRow) -> IndoorState:
     )
 
 
-async def load_inputs(s: AsyncSession, user_id: UUID, resolution_deg: float) -> UserInputs:
+async def load_inputs(
+    s: AsyncSession, user_id: UUID, resolution_deg: float, now: datetime
+) -> UserInputs:
     profile = await profiles_repo.get(s, user_id)
     places = await places_repo.for_user(s, user_id)
     sched = await schedules_repo.get(s, user_id)
     if profile is None or sched is None or "home" not in places or "office" not in places:
         raise ProfileIncompleteError(str(user_id))
     home, office = places["home"], places["office"]
-    today = datetime.now(UTC).astimezone(ZoneInfo(profile.timezone)).date()
-    # a margin of two days: the app clock can lag the wall clock; covers() checks exact dates
+    # the app's clock, not the wall clock: they differ in tests (a fixed day) and must agree
+    today = now.astimezone(ZoneInfo(profile.timezone)).date()
+    # two days back: covers yesterday in any time zone; covers() checks exact dates
     trips = await trips_repo.ending_from(s, user_id, today - timedelta(days=2))
     route = tuple(RoutePoint(p.cell_id, p.road_class) for p in await routes_repo.points(s, user_id))
     mid = midpoint(LatLon(home.lat, home.lon), LatLon(office.lat, office.lon))

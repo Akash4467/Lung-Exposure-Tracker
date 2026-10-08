@@ -35,6 +35,7 @@ export const keys = {
   trips: ['trips'] as const,
   location: ['location'] as const,
   tracks: ['tracks', 'today'] as const,
+  footprint: ['footprint'] as const,
 };
 
 export function errorMessage(e: unknown): string | null {

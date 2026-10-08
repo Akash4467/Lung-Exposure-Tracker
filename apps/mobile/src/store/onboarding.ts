@@ -56,7 +56,7 @@ const initial: Draft = {
     leave_office: '18:00',
     arrive_home: '19:00',
     sleep: '23:00',
-    commute_mode: 'bus_metro',
+    commute_mode: 'metro',
     office_days: [1, 2, 3, 4, 5],
   },
   size: null,

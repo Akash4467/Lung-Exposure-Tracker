@@ -1,0 +1,42 @@
+# Commute footprint: CO2 from the way someone travels to work. A separate concern from Lung
+# Load (this is climate, not the PM2.5 they breathe); changing this file never changes scores.
+#
+# kg CO2 per passenger-km, as [low, central, high]. Everything shown is an ESTIMATE.
+# Road values are tailpipe (fuel burned, "with uplift" = real-world driving); metro is the
+# power stations' share for its electricity. Neither counts making the vehicles or the roads.
+
+factors:
+  walk: {low: 0, central: 0, high: 0}
+  cycle: {low: 0, central: 0, high: 0}
+  # India GHG Program 2015, two-wheelers with uplift: motorcycle <125 cc 0.0319,
+  # scooter <110 cc 0.0368, motorcycle <200 cc 0.0458 (per vehicle-km, rider alone)
+  two_wheeler: {low: 0.0319, central: 0.0368, high: 0.0458, source: indiaghgp}
+  # India GHG Program 2015, petrol cars with uplift: small <800 cc 0.111, hatchback <1400 cc
+  # 0.140, SUV <3000 cc 0.213 (per vehicle-km: assumes the person drives alone)
+  car: {low: 0.111, central: 0.140, high: 0.213, source: indiaghgp}
+  # India GHG Program 2015: city bus 0.015161 per passenger-km. Low/high are OUR assumption
+  # for how full the bus is (x0.75 crowded, x2 half-empty); the source gives one value.
+  bus: {low: 0.0114, central: 0.0152, high: 0.0303, source: indiaghgp}
+  # High: Delhi Metro 61 g/pkm (UNEP DTU 2014, FY2010-11 electricity at 0.943 kg/kWh; the grid
+  # is less coal-heavy now). Low: 20 g/pkm, the bottom of 20-50 g for rail transit in
+  # developing countries (Sperling et al. 2004, cited there). Central: the midpoint.
+  metro: {low: 0.020, central: 0.040, high: 0.061, source: unep_dtu_metro}
+
+suggest:
+  swap_days_per_week: 2      # "two days a week by metro": a change people can actually make
+  weeks_per_year: 48         # working weeks, leaving out holidays
+  max_walk_km: 2.0           # one way; longer than this we don't suggest walking
+  max_cycle_km: 8.0
+  candidates: [walk, cycle, bus, metro]   # never suggests a car or two-wheeler
+
+sources:
+  indiaghgp:
+    title: India Specific Road Transport Emission Factors
+    publisher: India GHG Program (WRI India, CII, TERI)
+    year: 2015
+    url: https://indiaghgp.org/road-transport-emission-factors
+  unep_dtu_metro:
+    title: Case Study of Metro Rail in Indian Cities (Delhi Metro, section on CO2)
+    publisher: UNEP DTU Partnership
+    year: 2014
+    url: https://unepccc.org/wp-content/uploads/2014/08/case-study-of-metro-final.pdf

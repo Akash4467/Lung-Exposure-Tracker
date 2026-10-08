@@ -29,7 +29,7 @@ async def commute_view(ctx: AppContext, user_id: UUID) -> dict[str, Any]:
     cfg = ctx.cfg
     async with ctx.db.session() as s:
         try:
-            inputs = await load_inputs(s, user_id, ctx.settings.cell_resolution_deg)
+            inputs = await load_inputs(s, user_id, ctx.settings.cell_resolution_deg, ctx.clock())
         except ProfileIncompleteError as e:
             raise NotFound("finish onboarding first", "profile_incomplete") from e
         pts = await routes_repo.points(s, user_id)
