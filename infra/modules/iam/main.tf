@@ -11,7 +11,11 @@ variable "bucket_arn" { type = string }
 variable "log_group_arn" { type = string }
 variable "github_repo" {
   type        = string
-  description = "owner/repo allowed to deploy, e.g. akash/lung-exposure"
+  description = <<-EOT
+    Repo allowed to deploy, exactly as GitHub writes it in the OIDC subject: owner/repo, or
+    owner@owner_id/repo@repo_id for repos that use immutable subjects
+    (gh api repos/OWNER/REPO/actions/oidc/customization/sub shows the prefix).
+  EOT
 }
 variable "create_github_oidc_provider" {
   type        = bool

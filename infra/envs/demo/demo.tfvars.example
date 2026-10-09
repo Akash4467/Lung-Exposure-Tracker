@@ -1,4 +1,8 @@
 # Copy to demo.tfvars (git-ignored) and fill in.
+# github_repo must match GitHub's OIDC subject exactly. Check it with
+#   gh api repos/<owner>/<repo>/actions/oidc/customization/sub
+# If it shows "use_immutable_subject": true, use the IDs form from sub_claim_prefix, e.g.
+#   github_repo = "your-user@12345/your-repo@67890"
 github_repo = "your-github-user/lung-exposure"
 domain      = "lung-demo.duckdns.org"
 alarm_email = "you@example.com"

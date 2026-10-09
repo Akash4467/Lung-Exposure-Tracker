@@ -54,12 +54,13 @@ tofu init && tofu apply          # note the state_bucket output
 cd infra/envs/demo
 cp demo.tfvars.example demo.tfvars        # git-ignored; set github_repo, domain, alarm_email
 tofu init -backend-config="bucket=<state_bucket>"
-tofu plan -var-file=demo.tfvars           # read it: about 45 resources, nothing destroyed
+tofu plan -var-file=demo.tfvars           # read it: about 66 resources, nothing destroyed
 tofu apply -var-file=demo.tfvars
 tofu output                               # public_ip, instance_id, bucket, deploy_role_arn
 ```
 
 - If the account already has a GitHub OIDC provider, set `create_github_oidc_provider = false`.
+- **`github_repo` must match GitHub's OIDC subject exactly.** Check with `gh api repos/<owner>/<repo>/actions/oidc/customization/sub`: if it says `"use_immutable_subject": true` (new repos), use the IDs form from `sub_claim_prefix`, e.g. `owner@12345/repo@67890`. A mismatch shows in the deploy job as `Not authorized to perform sts:AssumeRoleWithWebIdentity`.
 - Confirm the "AWS Notification - Subscription Confirmation" email so alarms reach you.
 
 ### 3. Point DuckDNS at the server
