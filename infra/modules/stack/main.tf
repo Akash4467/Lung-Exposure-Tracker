@@ -54,6 +54,11 @@ module "queue" {
   name   = local.name
 }
 
+module "downloads" {
+  source = "../downloads"
+  name   = local.name
+}
+
 module "monitoring" {
   source      = "../monitoring"
   name        = local.name
@@ -121,6 +126,7 @@ locals {
     BACKUP_BUCKET  = module.storage.bucket_name
     LOG_GROUP      = module.monitoring.log_group_name
     TLS_MODE       = var.enable_alb ? "alb" : "caddy"
+    APK_URL        = module.downloads.apk_url # https://<domain>/app redirects here
   }
 }
 
@@ -134,6 +140,8 @@ resource "aws_ssm_parameter" "config" {
 output "public_ip" { value = module.compute.public_ip }
 output "instance_id" { value = module.compute.instance_id }
 output "bucket" { value = module.storage.bucket_name }
+output "downloads_bucket" { value = module.downloads.bucket_name }
+output "apk_url" { value = module.downloads.apk_url }
 output "deploy_role_arn" { value = module.iam.deploy_role_arn }
 output "ingest_queue_url" { value = module.queue.ingest_url }
 output "user_queue_url" { value = module.queue.user_url }

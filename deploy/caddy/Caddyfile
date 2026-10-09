@@ -50,6 +50,13 @@
 		}
 	}
 
+	# The app download (the QR code points here): the APK in the S3 downloads bucket, which is
+	# much faster from India than GitHub's release CDN. APK_URL comes from SSM (infra apply).
+	handle /app {
+		header Cache-Control "no-store"
+		redir {$APK_URL} 302
+	}
+
 	# Everything else: the download site (APK link, privacy policy).
 	handle {
 		root * /srv/site

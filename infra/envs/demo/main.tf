@@ -59,3 +59,5 @@ output "instance_id" { value = module.stack.instance_id }
 output "bucket" { value = module.stack.bucket }
 output "deploy_role_arn" { value = module.stack.deploy_role_arn }
 output "log_group" { value = module.stack.log_group }
+output "downloads_bucket" { value = module.stack.downloads_bucket }
+output "apk_url" { value = module.stack.apk_url }

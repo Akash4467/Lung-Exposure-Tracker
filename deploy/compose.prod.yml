@@ -36,6 +36,8 @@ services:
     environment:
       SITE_ADDRESS: ${SITE_ADDRESS:?set by deploy.sh}
       ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL (put-secrets.sh)}
+      # /app redirects here; falls back to GitHub Releases until the downloads bucket exists
+      APK_URL: ${APK_URL:-https://github.com/Akash4467/Lung-Exposure-Tracker/releases/latest/download/lung-score.apk}
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - ./site:/srv/site:ro

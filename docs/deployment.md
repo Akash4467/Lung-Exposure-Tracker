@@ -121,6 +121,7 @@ Push to `main` (or **Actions → ci-cd → Run workflow**). The pipeline runs te
 | Backups | Nightly at 02:00 IST to `s3://<bucket>/postgres/YYYY/MM/DD/`. Kept 30 days, plus 7 days of overwritten versions |
 | Back up now | On the server: `bash /opt/lung/current/scripts/backup.sh` |
 | Restore | On the server: `bash /opt/lung/current/scripts/restore.sh latest --yes` (stops API/worker, restores, starts them) |
+| Publish a new Android build | Build the release APK, then `bash deploy/scripts/publish-apk.sh`. `https://<domain>/app` (the QR code in `docs/assets/`) redirects to it. Optionally also attach it to a GitHub release as `lung-score.apk` |
 | Failed jobs | A message in `lung-demo-*-dlq` fires an alarm email. Inspect it in the SQS console and redrive after fixing |
 
 ### What a deploy does (`deploy/scripts/deploy.sh`)

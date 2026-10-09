@@ -2,6 +2,14 @@
 
 Estimates how much PM2.5 a person breathes in each day from where they spend their time, and suggests what to change. **Estimated exposure, informational only, not medical advice.**
 
+## Try it (Android)
+
+Scan with an Android phone, or open the link: the APK downloads, then tap **Install** (allow installs from your browser if asked). Live API: `https://lung-scorer.duckdns.org`.
+
+<img src="docs/assets/download-apk-qr.png" alt="QR code: download the Android app" width="180">
+
+[Download lung-score.apk](https://lung-scorer.duckdns.org/app) (always the latest build, served from AWS Mumbai; also on [GitHub Releases](https://github.com/Akash4467/Lung-Exposure-Tracker/releases/latest))
+
 ## Status
 
 | Layer | |
@@ -12,7 +20,7 @@ Estimates how much PM2.5 a person breathes in each day from where they spend the
 | 3. Data: schema, Open-Meteo + routes, services, SQS worker | ✅ |
 | 4. Auth + API (email/password, Google, JWT + rotating refresh, Brevo, FCM, rate limits) | ✅ |
 | 5. Mobile app (Expo 57): sign-in, onboarding, Today/Tomorrow/What-if/Settings | 🟡 5a-5c ✅ · 5d (APK, geofencing, push, Google) next |
-| 6. Infra + CI/CD (OpenTofu, Caddy, GHCR, SSM deploy, backups, alarms) | ✅ (verified locally; AWS apply pending) |
+| 6. Infra + CI/CD (OpenTofu, Caddy, GHCR, SSM deploy, backups, alarms) | ✅ live on AWS (`lung-scorer.duckdns.org`) |
 
 Details: [docs/PROGRESS.md](docs/PROGRESS.md)
 

@@ -82,7 +82,7 @@ jobs:
           done
       - name: tofu test (security and monitoring properties, mocked AWS)
         run: |
-          for m in network compute storage iam monitoring; do
+          for m in network compute storage downloads iam monitoring; do
             (cd "infra/modules/$m" && tofu init -input=false >/dev/null && tofu test)
           done
       - name: shellcheck
