@@ -13,7 +13,7 @@ from lung.repositories import users as users_repo
 from lung.repositories.routes import RoutePointRow
 from lung.services.context import AppContext
 
-from .conftest import HOME, local_today, make_user
+from .conftest import HOME, NOW, local_today, make_user
 
 pytestmark = pytest.mark.integration
 
@@ -69,8 +69,8 @@ async def test_cells_and_users_include_route_points(ctx: AppContext) -> None:
         await routes_repo.replace(
             s, uid, "straight_line", 20.0, [RoutePointRow(28.58, 77.30, "28.6_77.3", "unknown")]
         )
-        cells = await places_repo.cells_in_use(s)
-        users = await places_repo.users_in_cell(s, "28.6_77.3")
+        cells = await places_repo.cells_in_use(s, NOW)
+        users = await places_repo.users_in_cell(s, "28.6_77.3", NOW)
     assert cells == ["28.5_77.4", "28.6_77.2", "28.6_77.3"]
     assert users == [uid]
 

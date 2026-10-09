@@ -697,6 +697,7 @@ Keys live only in `apps/api/.env` (git-ignored). `make smoke` checks them withou
 | Date | Change |
 | --- | --- |
 | 2026-10-03 | Stack decisions agreed; layer 1 (foundation) and layer 2 (engine) completed; docs created |
+| 2026-10-09 | AWS demo environment created (66 resources, `lung-scorer.duckdns.org` → 13.200.124.7), secrets in SSM, GitHub `demo` environment + variables. CI: "which cells/users are in use" and the 7-day trip purge now use the app clock, not the database's; integration tests create the air partitions around their fixed day, so CI no longer breaks as the real date moves on |
 | 2026-10-08 | Launch: no black screen between the splash and the UI (light-only app, window background #F3F4F6) |
 | 2026-10-08 | Commute footprint (CO₂): Trends card + detail, India-specific factors with ranges and sources; bus and metro split (migration 0006) |
 | 2026-10-06 | Layer 7c monitoring: log metrics, 3 app alarms, dashboard, public `/status` + GitHub uptime check |

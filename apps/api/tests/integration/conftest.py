@@ -64,6 +64,25 @@ async def _recreate_db() -> None:
         await conn.close()
 
 
+async def _partitions_around_test_clock() -> None:
+    """The migration makes air partitions from the real month on; the tests write around the
+    fixed NOW, so make sure those months exist whatever the real date is."""
+    conn = await asyncpg.connect(f"{ADMIN_DSN.rsplit('/', 1)[0]}/{TEST_DB}")
+    try:
+        first = date(NOW.year, NOW.month, 1)
+        for k in range(-1, 3):
+            y, m = divmod(first.month - 1 + k, 12)
+            start = date(first.year + y, m + 1, 1)
+            y2, m2 = divmod(start.month, 12)
+            end = date(start.year + y2, m2 + 1, 1)
+            await conn.execute(
+                f"CREATE TABLE IF NOT EXISTS air_readings_{start:%Y_%m} PARTITION OF air_readings "
+                f"FOR VALUES FROM ('{start}T00:00:00+00') TO ('{end}T00:00:00+00')"
+            )
+    finally:
+        await conn.close()
+
+
 @pytest.fixture(scope="session", autouse=True)
 def migrated_db() -> Iterator[None]:
     asyncio.run(_recreate_db())
@@ -74,6 +93,7 @@ def migrated_db() -> Iterator[None]:
     cfg = Config(os.path.join(API_ROOT, "alembic.ini"))
     cfg.set_main_option("script_location", os.path.join(API_ROOT, "migrations"))
     command.upgrade(cfg, "head")
+    asyncio.run(_partitions_around_test_clock())
     yield
 
 

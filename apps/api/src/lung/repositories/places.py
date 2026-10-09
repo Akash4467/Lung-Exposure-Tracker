@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from datetime import time
+from datetime import datetime, time
 from uuid import UUID
 
 from sqlalchemy import text
@@ -127,31 +127,34 @@ async def set_indoor(
     return row.scalar_one_or_none() is not None
 
 
-async def cells_in_use(s: AsyncSession) -> list[str]:
+async def cells_in_use(s: AsyncSession, now: datetime) -> list[str]:
     """Every cell someone needs air for: their places, their route, and the destinations of
-    trips that are on now or start within the next 3 days (so the air is there in time)."""
+    trips that are on now or start within the next 3 days (so the air is there in time).
+    `now` is the app clock (not the database's), so tests with a fixed clock agree."""
     rows = await s.execute(
         text(
             "SELECT cell_id FROM places UNION SELECT cell_id FROM route_points "
             "UNION SELECT cell_id FROM trips "
-            "WHERE end_date >= CURRENT_DATE - 1 AND start_date <= CURRENT_DATE + 3 "
-            "UNION SELECT cell_id FROM travel_legs WHERE start_at > now() - interval '2 days' "
+            "WHERE end_date >= CAST(:today AS date) - 1 AND start_date <= CAST(:today AS date) + 3 "
+            "UNION SELECT cell_id FROM travel_legs "
+            "WHERE start_at > CAST(:now AS timestamptz) - interval '2 days' "
             "ORDER BY 1"
-        )
+        ),
+        {"today": now.date(), "now": now},
     )
     return list(rows.scalars().all())
 
 
-async def users_in_cell(s: AsyncSession, cell_id: str) -> list[UUID]:
+async def users_in_cell(s: AsyncSession, cell_id: str, now: datetime) -> list[UUID]:
     rows = await s.execute(
         text(
             "SELECT user_id FROM places WHERE cell_id = :c "
             "UNION SELECT user_id FROM route_points WHERE cell_id = :c "
             "UNION SELECT user_id FROM trips WHERE cell_id = :c "
-            "AND end_date >= CURRENT_DATE - 1 AND start_date <= CURRENT_DATE + 3 "
+            "AND end_date >= CAST(:today AS date) - 1 AND start_date <= CAST(:today AS date) + 3 "
             "UNION SELECT user_id FROM travel_legs WHERE cell_id = :c "
-            "AND start_at > now() - interval '2 days'"
+            "AND start_at > CAST(:now AS timestamptz) - interval '2 days'"
         ),
-        {"c": cell_id},
+        {"c": cell_id, "today": now.date(), "now": now},
     )
     return list(rows.scalars().all())

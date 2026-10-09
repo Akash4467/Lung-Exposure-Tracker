@@ -47,7 +47,7 @@ async def test_trip_day_uses_the_destination(client: httpx.AsyncClient, ctx: App
 
     goa_cell = cell_id(GOA["lat"], GOA["lon"], ctx.settings.cell_resolution_deg)
     async with ctx.db.session() as s:
-        assert goa_cell in await places_repo.cells_in_use(s)  # the worker will keep it fresh
+        assert goa_cell in await places_repo.cells_in_use(s, NOW)  # the worker will keep it fresh
     await _run_worker(ctx)  # the destination's air arrives, then the day is rescored
     away = (await client.get("/v1/me/score/today", headers=h)).json()
     assert away["trip"] == {"id": trip["id"], "label": "Goa"}

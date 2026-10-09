@@ -49,7 +49,7 @@ async def refresh(ctx: AppContext, force: bool = False) -> int:
     if not force and not await ctx.cache.claim(REFRESH_KEY, REFRESH_EVERY_S):
         return 0
     async with ctx.db.session() as s:
-        cells = await places_repo.cells_in_use(s)
+        cells = await places_repo.cells_in_use(s, ctx.clock())
     if not cells:
         return 0
     pts = [cell_center(c) for c in cells]

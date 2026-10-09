@@ -48,8 +48,8 @@ async def tick(ctx: AppContext, at: datetime) -> int:
     async with ctx.db.session() as s:
         await air_repo.ensure_partitions(s)
         purged = await refresh_repo.purge_expired(s)  # housekeeping rides on the tick
-        await travel_repo.purge_old(s)  # recorded travel is kept 7 days
-        used = await places_repo.cells_in_use(s)
+        await travel_repo.purge_old(s, at)  # recorded travel is kept 7 days
+        used = await places_repo.cells_in_use(s, at)
     # plus popular areas kept warm ahead of demand (warm_areas.yaml)
     warm = (
         warm_service.warm_cells(ctx.settings.cell_resolution_deg) if ctx.settings.warm_areas else ()
@@ -82,7 +82,7 @@ async def fetch(ctx: AppContext, cell_id: str, force: bool = False) -> int:
                 log.info("station_corrected", cell_id=cell_id, ratio=round(ratio, 2), stations=used)
         async with ctx.db.session() as s:
             stored = await air_repo.upsert_many(s, cell_id, source, rows)
-            users = await places_repo.users_in_cell(s, cell_id)
+            users = await places_repo.users_in_cell(s, cell_id, ctx.clock())
         await ctx.cache.set_json(fresh_key, 1, FETCH_FRESH_S)
     finally:
         await ctx.cache.delete(lock_key)

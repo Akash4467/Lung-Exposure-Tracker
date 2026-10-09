@@ -61,7 +61,7 @@ async def status(ctx: Ctx) -> JSONResponse:
         async with ctx.db.session() as s:
             cells = list(warm_service.warm_cells(ctx.settings.cell_resolution_deg))
             if not ctx.settings.warm_areas or not cells:
-                cells = await places_repo.cells_in_use(s)
+                cells = await places_repo.cells_in_use(s, now)
             last = await air_repo.latest_fetch(s, cells) if cells else None
     except Exception:
         return JSONResponse({"status": "unavailable"}, 503)

@@ -60,9 +60,13 @@ async def delete_all(s: AsyncSession, user_id: UUID) -> int:
     return int(row.rowcount)  # type: ignore[attr-defined]
 
 
-async def purge_old(s: AsyncSession) -> int:
+async def purge_old(s: AsyncSession, now: datetime) -> int:
+    """`now` is the app clock, so tests with a fixed clock keep their legs."""
     row = await s.execute(
-        text("DELETE FROM travel_legs WHERE start_at < now() - make_interval(days => :d)"),
-        {"d": RETENTION_DAYS},
+        text(
+            "DELETE FROM travel_legs "
+            "WHERE start_at < CAST(:now AS timestamptz) - make_interval(days => :d)"
+        ),
+        {"d": RETENTION_DAYS, "now": now},
     )
     return int(row.rowcount)  # type: ignore[attr-defined]
