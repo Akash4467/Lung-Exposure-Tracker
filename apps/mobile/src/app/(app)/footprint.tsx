@@ -110,7 +110,7 @@ function Body({ f }: { f: FootprintOut }) {
           easiest on your lungs: cycling emits nothing but you breathe hard next to traffic.
         </AppText>
         <Button
-          title="Compare Lung Load on the Map →"
+          title="Lung Load on the Map →"
           kind="secondary"
           compact
           onPress={() => router.push('/map')}

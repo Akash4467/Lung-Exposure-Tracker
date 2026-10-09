@@ -552,7 +552,8 @@ Asked for 2026-10-05: a scrollable world map with the pollution around you, any 
 - **API:** `GET /v1/me/footprint`. **Code:** `engine/footprint.py` + `footprint.yaml` (factors and sources), `services/footprint_service.py`; app `components/footprint-card.tsx`, `app/(app)/footprint.tsx`, `lib/footprint.ts`.
 - **Also fixed:** `load_inputs` used the wall clock for "today" instead of the app clock, so trip tests broke once the real date ran more than 2 days past the tests' fixed day. No effect for users (the two clocks are the same in production).
 - **Tests:** 8 unit (`test_footprint.py`), 2 integration, 7 Jest (`footprint.test.ts`, including "never calls CO₂ air pollution"). Totals: 173 unit + 83 integration + 68 Jest.
-- **Checked on real data:** the user's account (bus, 21.2 km, 5 days) → 3.2 kg a week (2.4-6.4); no swap beats the bus; about 26 kg a week avoided compared with driving. Not yet seen on the phone (Metro and the API were stopped for low memory).
+- **Checked on real data:** the user's account (bus, 21.2 km, 5 days) → 3.2 kg a week (2.4-6.4); no swap beats the bus; about 26 kg a week avoided compared with driving. **Tested on the phone (8 Oct):** the card and the detail screen show these numbers; the Map button and the source links work. The detail screen's map button wrapped its arrow onto a second line, so it now reads "Lung Load on the Map →".
+- **Black screen on launch (fixed):** after the green splash the app showed about 3 s of black before the UI. The splash hides before the JS is ready, and the Android window behind it followed the phone's dark mode. `app.json` now sets `userInterfaceStyle: "light"` (the app is light-only) and `backgroundColor: "#F3F4F6"` (the app's background), so the gap is the app's own grey. The gap is long in debug builds because the JS comes from Metro; a release build has the JS inside the APK.
 - Formulas, factors and sources: [how-the-numbers-work.md §12](how-the-numbers-work.md#12-commute-footprint-co).
 
 ## Layer 7: real-world data and monitoring (in progress)
@@ -696,6 +697,7 @@ Keys live only in `apps/api/.env` (git-ignored). `make smoke` checks them withou
 | Date | Change |
 | --- | --- |
 | 2026-10-03 | Stack decisions agreed; layer 1 (foundation) and layer 2 (engine) completed; docs created |
+| 2026-10-08 | Launch: no black screen between the splash and the UI (light-only app, window background #F3F4F6) |
 | 2026-10-08 | Commute footprint (CO₂): Trends card + detail, India-specific factors with ranges and sources; bus and metro split (migration 0006) |
 | 2026-10-06 | Layer 7c monitoring: log metrics, 3 app alarms, dashboard, public `/status` + GitHub uptime check |
 | 2026-10-06 | Push alerts checked end to end: a real FCM push arrived on the phone |

@@ -5,18 +5,27 @@
 #   deploy/scripts/put-secrets.sh demo
 # Press Enter to keep an existing value (or to auto-generate where offered).
 set -euo pipefail
+# Git Bash on Windows would rewrite "/lung/demo/..." into a Windows path
+export MSYS_NO_PATHCONV=1
 
 ENV_NAME="${1:-demo}"
 REGION="${AWS_REGION:-ap-south-1}"
 PREFIX="/lung/$ENV_NAME"
+
+# python3, or uv's Python where there is no python3 (Git Bash on Windows)
+py() {
+  if command -v python3 >/dev/null 2>&1; then python3 "$@"; else uv run --no-project python "$@"; fi
+}
 
 exists() {
   aws ssm get-parameter --region "$REGION" --name "$PREFIX/$1" >/dev/null 2>&1
 }
 
 put() { # name type value
-  aws ssm put-parameter --region "$REGION" --name "$PREFIX/$1" --type "$2" \
-    --value "$3" --overwrite >/dev/null
+  aws ssm put-parameter \
+    --region "$REGION" \
+    --cli-input-json "$(python3 -c 'import json,sys; print(json.dumps({"Name":sys.argv[1],"Type":sys.argv[2],"Value":sys.argv[3],"Overwrite":True}))' "$PREFIX/$1" "$2" "$3")" \
+    >/dev/null
   echo "  saved $PREFIX/$1 ($2)"
 }
 
@@ -30,7 +39,7 @@ ask() { # name type prompt [generate]
     read -r -p "$prompt [$state]: " value
   fi
   if [ -z "$value" ] && [ -n "$gen" ] && [ "$state" = "not set" ]; then
-    value="$(python3 -c 'import secrets; print(secrets.token_urlsafe(48))')"
+    value="$(py -c 'import secrets; print(secrets.token_urlsafe(48))')"
     echo "  generated a random value"
   fi
   if [ -n "$value" ]; then put "$name" "$type" "$value"; fi
@@ -46,7 +55,7 @@ ask GOOGLE_CLIENT_IDS String       "Google OAuth client IDs, comma-separated (op
 ask FCM_PROJECT_ID    String       "Firebase project ID (optional for now)"
 read -r -p "Path to Firebase service-account JSON (optional, Enter to skip): " SA
 if [ -n "$SA" ]; then
-  put FCM_SERVICE_ACCOUNT_JSON SecureString "$(python3 -c 'import json,sys; print(json.dumps(json.load(open(sys.argv[1]))))' "$SA")"
+  put FCM_SERVICE_ACCOUNT_JSON SecureString "$(py -c 'import json,sys; print(json.dumps(json.load(open(sys.argv[1]))))' "$SA")"
 fi
 ask ACME_EMAIL        String       "Email for Let's Encrypt expiry notices"
 ask DUCKDNS_TOKEN     SecureString "DuckDNS token"

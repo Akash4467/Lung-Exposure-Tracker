@@ -6,7 +6,8 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "lungexposure",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#F3F4F6",
     "ios": {
       "icon": "./assets/expo.icon",
       "bundleIdentifier": "com.lungexposure.tracker"
