@@ -115,7 +115,8 @@ function OutsideNow() {
       </View>
       <View style={[styles.rowBetween, { flexWrap: 'nowrap' }]}>
         <AqiPill pm25={now.pm25} />
-        <AppText variant="caption" muted>
+        {/* shrinks (wraps onto a 2nd line) instead of pushing past the card on narrow phones */}
+        <AppText variant="caption" muted style={{ flexShrink: 1, textAlign: 'right' }}>
           PM2.5 {Math.round(now.pm25)} µg/m³
         </AppText>
       </View>
